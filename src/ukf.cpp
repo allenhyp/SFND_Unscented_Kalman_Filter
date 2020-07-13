@@ -50,11 +50,23 @@ UKF::UKF() {
   // initial augmented sigma point matrix
   Xsig_aug_ = MatrixXd(n_aug_, 2 * n_aug_ + 1);
 
+  // initial predicted sigma points matrix
+  Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
+
   // initial radar measurement sigma points matrix
   Zsig_radar_ = MatrixXd(n_z_radar_, 2 * n_aug_ + 1);
 
+  // initial predicted radar measurement covariance matrix
+  S_radar_pred_ = MatrixXd(n_z_radar_, n_z_radar_);
+
   // initial radar measurement noise covariance matrix
   R_radar_ = MatrixXd(n_z_radar_,n_z_radar_);
+
+  // initial lidar measurement sigma points matrix
+  Zsig_lidar_ = MatrixXd(n_z_lidar_, 2 * n_aug_ + 1);
+
+  // initial predicted lidar measurement covariance matrix
+  S_lidar_pred_ = MatrixXd(n_z_lidar_, n_z_lidar_);
 
   // initial lidar measurement noise covariance matrix
   R_lidar_ = MatrixXd(n_z_lidar_,n_z_lidar_);
@@ -247,8 +259,7 @@ void UKF::PredictRadarMeasurement() {
   }
 
   // innovation covariance matrix S
-  MatrixXd S = MatrixXd(n_z_radar_, n_z_radar_);
-  S.fill(0.0);
+  S_radar_pred_.fill(0.0);
   for (int i = 0; i < 2 * n_aug_ + 1; ++i) {  // 2n+1 simga points
     // residual
     VectorXd z_diff = Zsig_radar_.col(i) - z_pred;
@@ -257,11 +268,47 @@ void UKF::PredictRadarMeasurement() {
     while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
     while (z_diff(1) < -M_PI) z_diff(1) += 2.0 * M_PI;
 
-    S += weights_(i) * z_diff * z_diff.transpose();
+    S_radar_pred_ += weights_(i) * z_diff * z_diff.transpose();
   }
 
   // add measurement noise covariance matrix
-  S += R_radar_;
+  S_radar_pred_ += R_radar_;
+}
+
+void UKF::PredictLidarMeasurement() {
+  // transform sigma points into measurement space
+  for (int i = 0; i < 2 * n_aug_ + 1; ++i) {
+    // extract values for better readability
+    double p_x = Xsig_pred_(0, i);
+    double p_y = Xsig_pred_(1, i);
+
+    // measurement model
+    Zsig_lidar_(0, i) = p_x;
+    Zsig_lidar_(1, i) = p_y;
+  }
+
+  // mean predicted measurement
+  VectorXd z_pred = VectorXd(n_z_lidar_);
+  z_pred.fill(0.0);
+  for (int i=0; i < 2 * n_aug_ + 1; ++i) {
+    z_pred += weights_(i) * Zsig_lidar_.col(i);
+  }
+
+  // innovation covariance matrix S
+  S_lidar_pred_.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; ++i) {  // 2n+1 simga points
+    // residual
+    VectorXd z_diff = Zsig_lidar_.col(i) - z_pred;
+
+    // angle normalization
+    while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
+    while (z_diff(1) < -M_PI) z_diff(1) += 2.0 * M_PI;
+
+    S_lidar_pred_ += weights_(i) * z_diff * z_diff.transpose();
+  }
+
+  // add measurement noise covariance matrix
+  S_lidar_pred_ += R_lidar_;
 }
 
 void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
@@ -270,7 +317,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
    * measurements.
    */
    if (meas_package.sensor_type_ == MeasurementPackage::SensorType::LASER) {
-
+     PredictLidarMeasurement();
    }
    else if (meas_package.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
      PredictRadarMeasurement();

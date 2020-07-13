@@ -31,6 +31,8 @@ class UKF {
 
   void PredictRadarMeasurement();
 
+  void PredictLidarMeasurement();
+
   /**
    * ProcessMeasurement
    * @param meas_package The latest measurement data of either radar or laser
@@ -90,14 +92,17 @@ class UKF {
   // radar measurement sigma points matrix
   Eigen::MatrixXd Zsig_radar_;
 
-  // predicted radar measurement vector
-  Eigen::VectorXd Z_radar_pred_;
-
   // predicted radar measurement covariance matrix
   Eigen::MatrixXd S_radar_pred_;
 
   // radar measurement noise covariance matrix
   Eigen::MatrixXd R_radar_;
+
+  // lidar measurement sigma points matrix
+  Eigen::MatrixXd Zsig_lidar_;
+
+  // predicted lidar measurement covariance matrix
+  Eigen::MatrixXd S_lidar_pred_;
 
   // lidar measurement noise covariance matrix
   Eigen::MatrixXd R_lidar_;
