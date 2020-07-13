@@ -89,6 +89,9 @@ class UKF {
   // predicted sigma points matrix
   Eigen::MatrixXd Xsig_pred_;
 
+  // radar mean predicted measurement
+  Eigen::VectorXd z_radar_pred_;
+
   // radar measurement sigma points matrix
   Eigen::MatrixXd Zsig_radar_;
 
@@ -97,6 +100,9 @@ class UKF {
 
   // radar measurement noise covariance matrix
   Eigen::MatrixXd R_radar_;
+
+  // lidar mean predicted measurement
+  Eigen::VectorXd z_lidar_pred_;
 
   // lidar measurement sigma points matrix
   Eigen::MatrixXd Zsig_lidar_;
