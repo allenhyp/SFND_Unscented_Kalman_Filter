@@ -1,6 +1,7 @@
 #ifndef UKF_H
 #define UKF_H
 
+#include <iostream>
 #include "Eigen/Dense"
 #include "measurement_package.h"
 
@@ -15,6 +16,20 @@ class UKF {
    * Destructor
    */
   virtual ~UKF();
+
+  void GenerateSigmaPoints();
+
+  void GenerateAugmentedSigmaPoints();
+
+  void GenerateWeights();
+
+  void GenerateMeasurementNoiseCovarianceMatrices();
+
+  void PredictSigmaPoints(double delta_t);
+
+  void PredictMeanStateAndCovarianceMatrix();
+
+  void PredictRadarMeasurement();
 
   /**
    * ProcessMeasurement
@@ -54,11 +69,38 @@ class UKF {
   // state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
   Eigen::VectorXd x_;
 
+  // augmented mean vector
+  Eigen::VectorXd x_aug_;
+
   // state covariance matrix
   Eigen::MatrixXd P_;
 
+  // augmented state covariance
+  Eigen::MatrixXd P_aug_;
+
+  // sigma points matrix
+  Eigen::MatrixXd Xsig_;
+
+  // augmented sigma point matrix
+  Eigen::MatrixXd Xsig_aug_;
+
   // predicted sigma points matrix
   Eigen::MatrixXd Xsig_pred_;
+
+  // radar measurement sigma points matrix
+  Eigen::MatrixXd Zsig_radar_;
+
+  // predicted radar measurement vector
+  Eigen::VectorXd Z_radar_pred_;
+
+  // predicted radar measurement covariance matrix
+  Eigen::MatrixXd S_radar_pred_;
+
+  // radar measurement noise covariance matrix
+  Eigen::MatrixXd R_radar_;
+
+  // lidar measurement noise covariance matrix
+  Eigen::MatrixXd R_lidar_;
 
   // time when the state is true, in us
   long long time_us_;
@@ -93,8 +135,17 @@ class UKF {
   // Augmented state dimension
   int n_aug_;
 
+  // Radar measurement dimension
+  int n_z_radar_;
+
+  // Lidar measurement dimension
+  int n_z_lidar_;
+
   // Sigma point spreading parameter
   double lambda_;
+
+  // Augmented sigma point spreading parameter
+  double lambda_aug_;
 };
 
 #endif  // UKF_H
