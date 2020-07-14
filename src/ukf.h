@@ -19,8 +19,6 @@ class UKF {
 
   void Initialize(MeasurementPackage &meas_package);
 
-  void GenerateSigmaPoints();
-
   void GenerateAugmentedSigmaPoints();
 
   void GenerateWeights();
@@ -159,6 +157,10 @@ class UKF {
 
   // Augmented sigma point spreading parameter
   double lambda_aug_;
+
+  // NIS
+  double NIS_radar_;
+  double NIS_lidar_;
 };
 
 #endif  // UKF_H

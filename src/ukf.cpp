@@ -4,6 +4,12 @@
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
+static double NormalizeAngle(double rad) {
+  while (rad > M_PI) rad -= 2.0 * M_PI;
+  while (rad < -M_PI) rad += 2.0 * M_PI;
+  return rad;
+}
+
 /**
  * Initializes Unscented Kalman filter
  */
@@ -109,6 +115,10 @@ UKF::UKF() {
 
   // Radar measurement noise standard deviation radius change in m/s
   std_radrd_ = 0.3; // 0.1
+
+  // initial nis
+  NIS_radar_ = 0.0;
+  NIS_lidar_ = 0.0;
   
   /**
    * End DO NOT MODIFY section for measurement noise values 
@@ -248,8 +258,7 @@ void UKF::PredictMeanStateAndCovarianceMatrix() {
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     // angle normalization
-    while (x_diff(3) > M_PI)  x_diff(3) -= 2.0 * M_PI;
-    while (x_diff(3) < -M_PI) x_diff(3) += 2.0 * M_PI;
+    x_diff(3) = NormalizeAngle(x_diff(3));
 
     P_ += weights_(i) * x_diff * x_diff.transpose() ;
   }
@@ -286,8 +295,7 @@ void UKF::PredictRadarMeasurement() {
     VectorXd z_diff = Zsig_radar_.col(i) - z_radar_pred_;
 
     // angle normalization
-    while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
-    while (z_diff(1) < -M_PI) z_diff(1) += 2.0 * M_PI;
+    z_diff(1) = NormalizeAngle(z_diff(1));
 
     S_radar_pred_ += weights_(i) * z_diff * z_diff.transpose();
   }
@@ -321,8 +329,7 @@ void UKF::PredictLidarMeasurement() {
     VectorXd z_diff = Zsig_lidar_.col(i) - z_lidar_pred_;
 
     // angle normalization
-    while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
-    while (z_diff(1) < -M_PI) z_diff(1) += 2.0 * M_PI;
+    z_diff(1) = NormalizeAngle(z_diff(1));
 
     S_lidar_pred_ += weights_(i) * z_diff * z_diff.transpose();
   }
@@ -365,7 +372,6 @@ void UKF::Prediction(double delta_t) {
    * Modify the state vector, x_. Predict sigma points, the state, 
    * and the state covariance matrix.
    */
-  //  GenerateSigmaPoints();
   GenerateAugmentedSigmaPoints();
   PredictSigmaPoints(delta_t);
   PredictMeanStateAndCovarianceMatrix();
@@ -388,15 +394,12 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
     // residual
     VectorXd z_diff = Zsig_lidar_.col(i) - z_lidar_pred_;
     // angle normalization
-    while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
-    while (z_diff(1) < -M_PI) z_diff(1) += 2.0 * M_PI;
+    z_diff(1) = NormalizeAngle(z_diff(1));
 
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     // angle normalization
-    while (x_diff(3) > M_PI) x_diff(3) -= 2.0 * M_PI;
-    while (x_diff(3) <- M_PI) x_diff(3) += 2.0 * M_PI;
-
+    x_diff(3) = NormalizeAngle(x_diff(3));
     Tc += weights_(i) * x_diff * z_diff.transpose();
   }
 
@@ -407,12 +410,13 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   VectorXd z_diff = meas_package.raw_measurements_ - z_lidar_pred_;
 
   // angle normalization
-  while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
-  while (z_diff(1) < -M_PI) z_diff(1) += 2.0 * M_PI;
+  z_diff(1) = NormalizeAngle(z_diff(1));
 
   // update state mean and covariance matrix
   x_ += K * z_diff;
   P_ -= K * S_lidar_pred_ * K.transpose();
+  NIS_lidar_ = z_diff.transpose() * S_lidar_pred_.inverse() * z_diff;
+  // std::cout << "LIDAR NIS: " << NIS_lidar_ << std::endl;
 }
 
 void UKF::UpdateRadar(MeasurementPackage meas_package) {
@@ -432,14 +436,12 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     // residual
     VectorXd z_diff = Zsig_radar_.col(i) - z_radar_pred_;
     // angle normalization
-    while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
-    while (z_diff(1) < -M_PI) z_diff(1) += 2.0 * M_PI;
+    z_diff(1) = NormalizeAngle(z_diff(1));
 
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     // angle normalization
-    while (x_diff(3) > M_PI) x_diff(3) -= 2.0 * M_PI;
-    while (x_diff(3) <- M_PI) x_diff(3) += 2.0 * M_PI;
+    x_diff(3) = NormalizeAngle(x_diff(3));
 
     Tc += weights_(i) * x_diff * z_diff.transpose();
   }
@@ -451,10 +453,11 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   VectorXd z_diff = meas_package.raw_measurements_ - z_radar_pred_;
 
   // angle normalization
-  while (z_diff(1) > M_PI) z_diff(1) -= 2.0 * M_PI;
-  while (z_diff(1) < -M_PI) z_diff(1) += 2.0 * M_PI;
+  z_diff(1) = NormalizeAngle(z_diff(1));
 
   // update state mean and covariance matrix
   x_ += K * z_diff;
   P_ -= K * S_radar_pred_ * K.transpose();
+  NIS_radar_ = z_diff.transpose() * S_radar_pred_.inverse() * z_diff;
+  // std::cout << "LIDAR NIS: " << NIS_radar_ << std::endl;
 }
