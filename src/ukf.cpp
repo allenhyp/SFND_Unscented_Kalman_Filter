@@ -48,7 +48,7 @@ UKF::UKF() {
   P_aug_ = MatrixXd(n_aug_, n_aug_);
   
   // initial sigma points matrix
-  Xsig_ = MatrixXd(n_x_, 2 * n_x_ + 1);
+  // Xsig_ = MatrixXd(n_x_, 2 * n_x_ + 1);
 
   // initial augmented sigma point matrix
   Xsig_aug_ = MatrixXd(n_aug_, 2 * n_aug_ + 1);
@@ -88,7 +88,7 @@ UKF::UKF() {
   std_a_ = 3;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.125 * M_PI;
+  std_yawdd_ = 0.5 * M_PI;
   
   /**
    * DO NOT MODIFY measurement noise values below.
@@ -124,7 +124,7 @@ UKF::UKF() {
 
 UKF::~UKF() {}
 
-void UKF::Initializes(MeasurementPackage &meas_package) {
+void UKF::Initialize(MeasurementPackage &meas_package) {
   if (meas_package.sensor_type_ == MeasurementPackage::SensorType::LASER) {
     x_.head(2) = meas_package.raw_measurements_;
     P_ << std_laspx_ * std_laspx_, 0.0, 0.0, 0.0, 0.0,
@@ -149,20 +149,6 @@ void UKF::Initializes(MeasurementPackage &meas_package) {
   }
   is_initialized_ = true;
   time_us_ = meas_package.timestamp_;
-}
-
-void UKF::GenerateSigmaPoints() {
-  // calculate square root of P_
-  MatrixXd A = P_.llt().matrixL();
-
-  // set first column of sigma point matrix
-  Xsig_.col(0) = x_;
-
-  // set remaining sigma points
-  for (int i = 0; i < n_x_; ++i) {
-    Xsig_.col(i + 1)        = x_ + sqrt(lambda_ + n_x_) * A.col(i);
-    Xsig_.col(i + 1 + n_x_) = x_ - sqrt(lambda_ + n_x_) * A.col(i);
-  }
 }
 
 void UKF::GenerateAugmentedSigmaPoints() {
@@ -350,6 +336,16 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
    * TODO: Complete this function! Make sure you switch between lidar and radar
    * measurements.
    */
+   if (!is_initialized_) {
+      Initialize(meas_package);
+   }
+
+   // Prediction
+   double delta_t = (meas_package.timestamp_ - time_us_) / 1000000.0;
+   time_us_ = meas_package.timestamp_;
+   Prediction(delta_t);
+
+   // Update
    if (meas_package.sensor_type_ == MeasurementPackage::SensorType::LASER) {
      PredictLidarMeasurement();
      UpdateLidar(meas_package);
@@ -369,10 +365,10 @@ void UKF::Prediction(double delta_t) {
    * Modify the state vector, x_. Predict sigma points, the state, 
    * and the state covariance matrix.
    */
-   GenerateSigmaPoints();
-   GenerateAugmentedSigmaPoints();
-   PredictSigmaPoints(delta_t);
-   PredictMeanStateAndCovarianceMatrix();
+  //  GenerateSigmaPoints();
+  GenerateAugmentedSigmaPoints();
+  PredictSigmaPoints(delta_t);
+  PredictMeanStateAndCovarianceMatrix();
 }
 
 void UKF::UpdateLidar(MeasurementPackage meas_package) {

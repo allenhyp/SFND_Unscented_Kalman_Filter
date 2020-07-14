@@ -83,7 +83,7 @@ class UKF {
   Eigen::MatrixXd P_aug_;
 
   // sigma points matrix
-  Eigen::MatrixXd Xsig_;
+  // Eigen::MatrixXd Xsig_;
 
   // augmented sigma point matrix
   Eigen::MatrixXd Xsig_aug_;
