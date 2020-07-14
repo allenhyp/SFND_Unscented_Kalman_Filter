@@ -8,6 +8,9 @@ using Eigen::VectorXd;
  * Initializes Unscented Kalman filter
  */
 UKF::UKF() {
+  // initially set to false, set to true in first call of ProcessMeasurement
+  is_initialized_ = false;
+
   // if this is false, laser measurements will be ignored (except during init)
   use_laser_ = true;
 
@@ -120,6 +123,33 @@ UKF::UKF() {
 }
 
 UKF::~UKF() {}
+
+void UKF::Initializes(MeasurementPackage &meas_package) {
+  if (meas_package.sensor_type_ == MeasurementPackage::SensorType::LASER) {
+    x_.head(2) = meas_package.raw_measurements_;
+    P_ << std_laspx_ * std_laspx_, 0.0, 0.0, 0.0, 0.0,
+          0.0, std_laspy_ * std_laspy_, 0.0, 0.0, 0.0,
+          0.0, 0.0, 1.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 1.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 1.0;
+  }
+  else if (meas_package.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
+    double r = meas_package.raw_measurements_(0);
+    double phi = meas_package.raw_measurements_(1);
+    double r_dot = meas_package.raw_measurements_(2);
+    double x = r * cos(phi);
+    double y = r * sin(phi);
+
+    x_ << x, y, r_dot, 0, 0;
+    P_ << std_radr_ * std_radr_, 0.0, 0.0, 0.0, 0.0,
+          0.0, std_radr_ * std_radr_, 0.0, 0.0, 0.0,
+          0.0, 0.0, std_radrd_ * std_radrd_, 0.0, 0.0,
+          0.0, 0.0, 0.0, std_radphi_, std_radphi_, 0.0,
+          0.0, 0.0, 0.0, 0.0, 1.0;
+  }
+  is_initialized_ = true;
+  time_us_ = meas_package.timestamp_;
+}
 
 void UKF::GenerateSigmaPoints() {
   // calculate square root of P_
@@ -322,9 +352,11 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
    */
    if (meas_package.sensor_type_ == MeasurementPackage::SensorType::LASER) {
      PredictLidarMeasurement();
+     UpdateLidar(meas_package);
    }
    else if (meas_package.sensor_type_ == MeasurementPackage::SensorType::RADAR) {
      PredictRadarMeasurement();
+     UpdateRadar(meas_package);
    }
    else {
      std::cout << "Error: Unknown sensor type.\n";

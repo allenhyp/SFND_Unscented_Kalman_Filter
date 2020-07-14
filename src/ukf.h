@@ -17,6 +17,8 @@ class UKF {
    */
   virtual ~UKF();
 
+  void Initialize(MeasurementPackage &meas_package);
+
   void GenerateSigmaPoints();
 
   void GenerateAugmentedSigmaPoints();
